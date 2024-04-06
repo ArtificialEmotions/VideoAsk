@@ -188,7 +188,7 @@ app.post('/videoask', async (req, res) => {
                         // remove special chars
                         formattedName = "videoask_" + formattedName.replace(/[^\w\s]/gi, '_');
 
-                        const poll_properties = {"label":question.title, "type":"string","formField":true,"groupName":"videoaskapp","name":formattedName,"fieldType":"textarea"};
+                        const poll_properties = {"label":"VideoAsk " + question.title, "type":"string","formField":true,"groupName":"videoaskapp","name":formattedName,"fieldType":"textarea"};
 
                         await axios.post(`https://api.hubapi.com/crm/v3/properties/contacts`, poll_properties, {
                             headers: {
@@ -217,7 +217,7 @@ app.post('/videoask', async (req, res) => {
                     // remove special chars
                     formattedName2 = "videoask_" + formattedName2.replace(/[^\w\s]/gi, '_');
 
-                    const poll_properties2 = {"label":question.title,"type":"string","formField":true,"groupName":"videoaskapp","name":formattedName2,"fieldType":"textarea"};
+                    const poll_properties2 = {"label":"VideoAsk " + question.title,"type":"string","formField":true,"groupName":"videoaskapp","name":formattedName2,"fieldType":"textarea"};
 
                     await axios.post(`https://api.hubapi.com/crm/v3/properties/contacts`, poll_properties2, {
                         headers: {
