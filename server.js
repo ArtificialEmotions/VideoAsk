@@ -5,7 +5,6 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-// app.use(express.json());
 app.use(express.json({limit: '50mb'}));
 app.use(express.urlencoded({limit: '50mb'}));
 
@@ -126,8 +125,8 @@ app.post('/videoask', async (req, res) => {
         const firstName = fullNameData.split(' ').shift();
         const surname = fullNameData.split(' ')[1];
 
-        // const userId = `user_144246481`; // localserver
-        const userId = `user_26122306`; // client
+        const userId = `user_144246481`; // localserver
+        // const userId = `user_26122306`; // client
         let tokens = tokenStore.get(userId);
 
         if (!tokens) {
@@ -168,28 +167,59 @@ app.post('/videoask', async (req, res) => {
 
         // Iterate through answersData to format data
         answersData.forEach(async answer => {
-        const question = questionsData.find(q => q.question_id === answer.question_id);
-        if (!question) return; // Skip if corresponding question not found
+            const question = questionsData.find(q => q.question_id === answer.question_id);
+            if (!question) return; // Skip if corresponding question not found
 
-        // Check if the answer is from a poll
-        if (answer.poll_options && answer.poll_options.length > 0) {
-            answer.poll_options.forEach(async option => {
+            // Check if the answer is from a poll
+            if (answer.poll_options && answer.poll_options.length > 0) {
+                answer.poll_options.forEach(async option => {
+                    if (!formattedData[question.title]) {
+                        formattedData[question.title] = [];
+                    }
+                    
+                    formattedData[question.title].push(option.content);
+
+                    try{
+                        let formattedName = question.title;
+                        //lowercase
+                        formattedName = formattedName.toLowerCase();
+                        // remove space
+                        formattedName = formattedName.replace(/\s+/g, '_');
+                        // remove special chars
+                        formattedName = "videoask_" + formattedName.replace(/[^\w\s]/gi, '_');
+
+                        const poll_properties = {"label":question.title, "type":"string","formField":true,"groupName":"videoaskapp","name":formattedName,"fieldType":"textarea"};
+
+                        await axios.post(`https://api.hubapi.com/crm/v3/properties/contacts`, poll_properties, {
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                    } catch(error){
+                        console.log('Error during poll API', error);
+                    }
+
+                });
+            } else if (answer.input_text) { // Check if the answer is from text input
                 if (!formattedData[question.title]) {
                     formattedData[question.title] = [];
                 }
-                
-                formattedData[question.title].push(option.content);
+
+                formattedData[question.title].push(answer.input_text);
 
                 try{
-                    let formattedName = question.title;
+                    let formattedName2 = question.title;
+                    //lowercase
+                    formattedName2 = formattedName2.toLowerCase();
                     // remove space
-                    formattedName = formattedName.replace(/\s+/g, '_');
+                    formattedName2 = formattedName2.replace(/\s+/g, '_');
                     // remove special chars
-                    formattedName = "videoask_" + formattedName.replace(/[^\w\s]/gi, '_');
+                    formattedName2 = "videoask_" + formattedName2.replace(/[^\w\s]/gi, '_');
 
-                    const poll_properties = {"label":question.title, "type":"string","formField":true,"groupName":"videoaskapp","name":formattedName,"fieldType":"textarea"};
+                    const poll_properties2 = {"label":question.title,"type":"string","formField":true,"groupName":"videoaskapp","name":formattedName2,"fieldType":"textarea"};
 
-                    await axios.post(`https://api.hubapi.com/crm/v3/properties/contacts`, poll_properties, {
+                    await axios.post(`https://api.hubapi.com/crm/v3/properties/contacts`, poll_properties2, {
                         headers: {
                             'Authorization': `Bearer ${accessToken}`,
                             'Content-Type': 'application/json'
@@ -198,34 +228,7 @@ app.post('/videoask', async (req, res) => {
                 } catch(error){
                     console.log('Error during poll API', error);
                 }
-
-            });
-        } else if (answer.input_text) { // Check if the answer is from text input
-            if (!formattedData[question.title]) {
-                formattedData[question.title] = [];
             }
-
-            formattedData[question.title].push(answer.input_text);
-
-            try{
-                let formattedName2 = question.title;
-                // remove space
-                formattedName2 = formattedName2.replace(/\s+/g, '_');
-                // remove special chars
-                formattedName2 = "videoask_" + formattedName2.replace(/[^\w\s]/gi, '_');
-
-                const poll_properties2 = {"label":question.title,"type":"string","formField":true,"groupName":"videoaskapp","name":formattedName2,"fieldType":"textarea"};
-
-                await axios.post(`https://api.hubapi.com/crm/v3/properties/contacts`, poll_properties2, {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-            } catch(error){
-                console.log('Error during poll API', error);
-            }
-        }
         });
 
         if(formattedData != {}) {
@@ -250,7 +253,7 @@ app.post('/videoask', async (req, res) => {
             
             let { results } = getContactId.data;
 
-            // If contact Found
+            // If contact not Found
             if (results && results.length <= 0) {
                 // creating a new contact
                 const newContact = {
@@ -271,35 +274,58 @@ app.post('/videoask', async (req, res) => {
                         'Authorization': `Bearer ${accessToken}`
                     }
                 });
-            } else {
-                const { id } = results[0];
 
-                updateData = {
-                    properties: {}
-                };
-
-                for (const property in formattedData) {
-                    if (Object.hasOwnProperty.call(formattedData, property)) {
-                        const values = formattedData[property];
-                        
-                        let formattedName3 = property;
-                        // remove space
-                        formattedName3 = formattedName3.replace(/\s+/g, '_');
-                        // remove special chars
-                        formattedName3 = "videoask_" + formattedName3.replace(/[^\w\s]/gi, '_');
-                
-                        updateData.properties[formattedName3] = values.join(', ');
-                    }
-                }
-            
-                await axios.patch(`https://api.hubapi.com/crm/v3/objects/contacts/${id}`, updateData, {
+                // Search for contact
+                const getContactId2 = await axios.post(
+                    'https://api.hubapi.com/crm/v3/objects/contacts/search',
+                    {
+                    filterGroups: [
+                        {filters: [{
+                            propertyName: 'email',
+                            operator: 'EQ',
+                            value: emailData
+                            }]}]
+                    },
+                    {
                     headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
                     }
-                }
+                    }
                 );
+                
+                ({ results } = getContactId2.data);
             }
+
+            const { id } = results[0];
+
+            updateData = {
+                properties: {}
+            };
+
+            for (const property in formattedData) {
+                if (Object.hasOwnProperty.call(formattedData, property)) {
+                    const values = formattedData[property];
+                    
+                    let formattedName3 = property;
+                    //lowercase
+                    formattedName3 = formattedName3.toLowerCase();
+                    // remove space
+                    formattedName3 = formattedName3.replace(/\s+/g, '_');
+                    // remove special chars
+                    formattedName3 = "videoask_" + formattedName3.replace(/[^\w\s]/gi, '_');
+            
+                    updateData.properties[formattedName3] = values.join(', ');
+                }
+            }
+        
+            await axios.patch(`https://api.hubapi.com/crm/v3/objects/contacts/${id}`, updateData, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+            );
         }
 
         console.log(formattedData);
