@@ -178,6 +178,7 @@ app.post('/videoask', async (req, res) => {
         const answersData = req.body.contact.answers;
         const emailData = req.body.contact.email;
         const fullNameData = req.body.contact.name;
+        const phone_number = req.body.contact.phone_number;
 
         const firstName = fullNameData.split(' ').shift();
         const surname = fullNameData.split(' ')[1];
@@ -303,13 +304,12 @@ app.post('/videoask', async (req, res) => {
 
         // If contact not found
         if (results.length === 0) {
-            console.log("yes");
-
             // Creating a new contact
             const newContact = {
                 properties: {
                     'email': emailData,
                     'firstname': firstName,
+                    'phone': phone_number,
                 }
             };
 
